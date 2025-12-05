@@ -1,120 +1,24 @@
-import { GoogleGenAI } from "@google/genai";
 import { VerbForm, JLPTLevel, Vocabulary, Sentence } from '../types';
+import { N3_VOCAB_LIST, MOCK_N5_N4_MIX } from '../data/vocabData';
+import { shuffleArray } from '../utils';
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// NOTE:
+// 为了让 GitHub Pages 上的纯前端版本更加稳定可靠，
+// 这里完全移除了对 Gemini API（@google/genai）的依赖，
+// 所有单词和句子改为使用内置数据或本地构造。
+// 这样即使没有 API key，也能在手机和浏览器上稳定运行。
 
-const SAMPLE_RATE = 24000;
+// ========================
+//  语音（仅浏览器 TTS）
+// ========================
 
-// Audio Cache and Context Singleton
-const audioCache = new Map<string, AudioBuffer>();
-let sharedAudioContext: AudioContext | null = null;
-
-const getAudioContext = () => {
-  if (!sharedAudioContext) {
-    sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: SAMPLE_RATE });
-  }
-  return sharedAudioContext;
+// 预加载目前不做任何事，只是保留函数签名，避免调用报错
+export const preloadSpeech = async (_text: string): Promise<void> => {
+  return;
 };
 
-const decodeBase64 = (base64: string): Uint8Array => {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-};
-
-const pcmToAudioBuffer = (
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number = SAMPLE_RATE,
-  numChannels: number = 1
-): AudioBuffer => {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-    }
-  }
-  return buffer;
-};
-
-// Internal function to fetch and decode audio, managing cache
-const fetchAudioBuffer = async (text: string): Promise<AudioBuffer | null> => {
-  if (!text) return null;
-
-  // IMPORTANT FIX: Prioritize Kana in brackets for pronunciation
-  // Old: [私](わたし) -> 私 (Risk of Chinese reading)
-  // New: [私](わたし) -> わたし (Guaranteed Japanese reading)
-  const cleanText = text.replace(/\[.*?\]\((.*?)\)/g, '$1');
-  
-  if (!cleanText.trim()) return null;
-
-  // Return cached buffer if exists
-  if (audioCache.has(cleanText)) {
-    return audioCache.get(cleanText)!;
-  }
-
-  if (!apiKey) {
-    console.log("No API key, skipping Gemini TTS fetch");
-    return null;
-  }
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ 
-        parts: [{ text: cleanText }] 
-      }],
-      config: {
-        // Use string literal to avoid runtime enum issues
-        responseModalities: ['AUDIO' as any], 
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
-    });
-
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    const base64Audio = part?.inlineData?.data;
-
-    if (!base64Audio) {
-      // Log warning but don't crash, let fallback handle it
-      console.warn("Gemini TTS returned no audio data. Response text:", part?.text);
-      return null;
-    }
-
-    const ctx = getAudioContext();
-    const pcmData = decodeBase64(base64Audio);
-    const audioBuffer = pcmToAudioBuffer(pcmData, ctx);
-    
-    // Store in cache
-    audioCache.set(cleanText, audioBuffer);
-    return audioBuffer;
-
-  } catch (error) {
-    console.warn("Gemini TTS Fetch Error (Falling back to browser):", error);
-    return null;
-  }
-};
-
-// Public function to preload audio in background
-export const preloadSpeech = async (text: string): Promise<void> => {
-  await fetchAudioBuffer(text);
-};
-
-// Public function to play audio (from cache or fetch)
+// 使用浏览器自带的 speechSynthesis 播放日语
 export const generateSpeech = async (text: string): Promise<void> => {
-  // Re-calculate clean text first to ensure consistent processing
   const cleanText = text.replace(/\[.*?\]\((.*?)\)/g, '$1').trim();
   
   if (!cleanText) {
@@ -122,48 +26,12 @@ export const generateSpeech = async (text: string): Promise<void> => {
     return;
   }
 
-  // If no API key, directly use browser TTS
-  if (!apiKey) {
-    console.log("No API key, using Browser TTS for:", cleanText);
-    try {
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(cleanText);
-      u.lang = 'ja-JP';
-      u.rate = 0.9;
-      u.pitch = 1.0;
-      u.volume = 1.0;
-      window.speechSynthesis.speak(u);
-    } catch (error) {
-      console.error("Browser TTS error:", error);
-    }
-    return;
-  }
-
-  // Try to get buffer (checks cache internally)
   try {
-    const buffer = await fetchAudioBuffer(text);
-    
-    if (buffer) {
-      const ctx = getAudioContext();
-      // Resume context if suspended (browser requirement for user gesture)
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start();
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      console.warn("Browser TTS not available");
       return;
     }
-  } catch (error) {
-    console.warn("Gemini TTS failed, falling back to browser TTS:", error);
-  }
-
-  // Fallback to Browser TTS if API failed
-  console.log("Using Browser TTS Fallback for:", cleanText);
-  try {
-    // Cancel any ongoing speech
+    // 先取消之前的朗读，避免叠加
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(cleanText);
     u.lang = 'ja-JP';
@@ -176,169 +44,94 @@ export const generateSpeech = async (text: string): Promise<void> => {
   }
 };
 
-const VERB_TOPICS = [
-  "Cooking & Recipes (烹饪)",
-  "Office Work (办公室工作)",
-  "Travel & Hotels (旅行与住宿)",
-  "Repairs & DIY (修理与制作)",
-  "Emotions (情感)",
-  "Social Interactions (社交)",
-  "Shopping (购物)",
-  "Housework (家务)",
-  "Health (健康)",
-  "Nature (自然)",
-  "Technology (科技)",
-  "Traffic (交通)",
-  "Emergencies (紧急情况)",
-  "Hobbies (爱好)"
-];
+// ========================
+//  词汇生成（本地数据）
+// ========================
 
-const BANNED_VERBS = [
-  "食べます", "飲みます", "行きます", "来ます", "見ます", "します", "寝ます", "起きます", "勉強します", "買います", "聞きます",
-  "食べる", "飲む", "行く", "来る", "見る", "する", "寝る", "起きる", "勉強する", "買う", "聞く"
-];
+// 从内置 N3 列表中取出动词（id 以 n3_v 开头）
+const LOCAL_VERBS: Vocabulary[] = N3_VOCAB_LIST.filter(v => v.id.startsWith('n3_v'));
 
 export const generateVerbPractice = async (
   forms: VerbForm[],
   level: JLPTLevel,
   count: number = 7
 ): Promise<Vocabulary[]> => {
-    if (!apiKey) return [];
+  // 这里不根据具体变形 form 做复杂变化，
+  // 主要是保证用户选择“动词变形模式”时，出来的一定是“动词”
+  // 而不是名词、形容词。
+  let pool = LOCAL_VERBS;
 
-    const randomTopic = VERB_TOPICS[Math.floor(Math.random() * VERB_TOPICS.length)];
-    // Force higher complexity request
-    const complexity = "Intermediate (N4/N3) - Use varied and distinct verbs";
+  // 简单根据等级做一点点区分（目前只有 N3 详细词表）
+  if (level === JLPTLevel.N5 || level === JLPTLevel.N4) {
+    // 对于 N5/N4，先用 N5/N4 混合列表里的动词（简单过滤）
+    const basicVerbs = MOCK_N5_N4_MIX.filter(v => /ます$|します$|きます$|ぎます$|みます$|います$/.test(v.kana));
+    pool = basicVerbs.length > 0 ? basicVerbs : LOCAL_VERBS;
+  }
 
-    const prompt = `
-    Generate ${count} distinct Japanese verbs conjugated in the following forms: ${forms.join(', ')}.
-    Topic: ${randomTopic}.
-    Complexity: ${complexity}.
-    
-    CRITICAL RULES:
-    1. STRICTLY EXCLUDE these common words: ${BANNED_VERBS.join(', ')}.
-    2. I want interesting verbs like: "repair (直す)", "invite (誘う)", "translate (翻訳する)", "break (折れる)", "lose (失くす)", "search (探す)", "decide (決める)", "convey (伝える)".
-    3. Japanese text MUST use ruby format for Kanji ONLY. 
-       - Correct: [食](た)べます
-       - Incorrect: [食べます](たべます)
-    4. If a specific form is requested (e.g., Te-form), the Japanese text MUST be in that form.
-    5. Meaning must be in Simplified Chinese (简体中文).
-    6. JSON Format ONLY.
-    
-    Schema:
-    [
-      { "id": "uuid", "kanji": "formatted_string_with_brackets", "kana": "full_reading_string", "meaning": "string", "form": "string" }
-    ]
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: { responseMimeType: "application/json" }
-        });
-        const text = response.text;
-        if (!text) return [];
-        return JSON.parse(text) as Vocabulary[];
-    } catch (e) {
-        console.error("Verb Gen Error", e);
-        return [];
-    }
+  const shuffled = shuffleArray(pool);
+  return shuffled.slice(0, count);
 };
-
-const VOCAB_TOPICS = [
-  "Economics & Business (经济与商务)",
-  "Health & Medicine (健康与医疗)", 
-  "Traffic & Transport (交通与运输)",
-  "Technology & Science (科技与科学)",
-  "Nature & Environment (自然与环境)",
-  "Politics & Society (政治与社会)",
-  "Emotions & Personality (情感与性格)",
-  "Abstract Concepts (抽象概念)",
-  "Workplace (职场)",
-  "Education (教育)",
-  "Arts & Culture (艺术与文化)",
-  "Law & Rules (法律与规则)"
-];
 
 export const generateVocabulary = async (
   level: JLPTLevel,
   count: number = 7
 ): Promise<Vocabulary[]> => {
-    if (!apiKey) return [];
+  let source: Vocabulary[];
 
-    const randomTopic = VOCAB_TOPICS[Math.floor(Math.random() * VOCAB_TOPICS.length)];
+  if (level === JLPTLevel.N3) {
+    source = N3_VOCAB_LIST;
+  } else {
+    // N5 / N4 使用基础混合词表
+    source = MOCK_N5_N4_MIX;
+  }
 
-    const prompt = `
-    Generate ${count} Japanese vocabulary words for JLPT Level ${level}.
-    Topic: ${randomTopic} (To ensure variety).
-    
-    CRITICAL RULES:
-    1. Avoid very common beginner words like "eat", "drink", "cat", "dog" if Level is N3 or higher.
-    2. Japanese text MUST use ruby format for Kanji characters ONLY.
-       - Correct: [学生](がくせい)
-       - Correct: [勉](べん)[強](きょう)します
-       - Incorrect: [学生](gakusei)
-    3. Meaning must be in Simplified Chinese (简体中文).
-    4. JSON Format ONLY.
-    
-    Schema:
-    [
-      { "id": "uuid", "kanji": "formatted_string_with_brackets", "kana": "full_reading_string", "meaning": "string", "level": "string" }
-    ]
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: { responseMimeType: "application/json" }
-        });
-        const text = response.text;
-        if (!text) return [];
-        return JSON.parse(text) as Vocabulary[];
-    } catch (e) {
-        console.error("Vocab Gen Error", e);
-        return [];
-    }
+  const shuffled = shuffleArray(source);
+  return shuffled.slice(0, count);
 };
+
+// ========================
+//  例句（简单本地 mock）
+// ========================
+
+const MOCK_SENTENCES: Sentence[] = [
+  {
+    id: 's1',
+    japanese: '[毎朝](まいあさ)[早](はや)く[起](お)きます。',
+    meaning: '每天早上很早起床。',
+    lesson: 5,
+    verbForm: 'ます形'
+  },
+  {
+    id: 's2',
+    japanese: '[昨日](きのう)[友達](ともだち)と[映画](えいが)を[見](み)ました。',
+    meaning: '昨天和朋友一起看了电影。',
+    lesson: 12,
+    verbForm: 'た形'
+  },
+  {
+    id: 's3',
+    japanese: '[雨](あめ)が[降](ふ)ったら、[試合](しあい)は[中止](ちゅうし)になります。',
+    meaning: '如果下雨，比赛就会中止。',
+    lesson: 25,
+    verbForm: 'ば形'
+  }
+];
 
 export const generatePracticeContent = async (
   lessons: number[] | undefined,
   verbForms: VerbForm[],
   count: number = 5
 ): Promise<Sentence[]> => {
-    if (!apiKey) return [];
+  // 简单从 MOCK_SENTENCES 里选，稍微根据 lesson 做一下过滤
+  let pool = MOCK_SENTENCES;
 
-    const lessonPrompt = lessons && lessons.length > 0 
-      ? `Lessons ${lessons.join(', ')}` 
-      : 'Beginner level (N5/N4)';
-
-    const prompt = `
-    Generate ${count} Japanese example sentences for Minna no Nihongo ${lessonPrompt}.
-    Using verb forms: ${verbForms.length > 0 ? verbForms.join(', ') : 'any polite form'}.
-    
-    Requirements:
-    1. Japanese text MUST use ruby format: [Kanji](Kana).
-    2. Meaning must be in Simplified Chinese (简体中文).
-    3. JSON Format ONLY.
-    
-    Schema:
-    [
-      { "id": "uuid", "japanese": "string", "meaning": "string", "lesson": number, "verbForm": "string" }
-    ]
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: { responseMimeType: "application/json" }
-        });
-        const text = response.text;
-        if (!text) return [];
-        return JSON.parse(text) as Sentence[];
-    } catch (e) {
-        console.error("Sentence Gen Error", e);
-        return [];
+  if (lessons && lessons.length > 0) {
+    pool = MOCK_SENTENCES.filter(s => lessons.includes(s.lesson));
+    if (pool.length === 0) {
+      pool = MOCK_SENTENCES;
     }
+  }
+
+  const shuffled = shuffleArray(pool);
+  return shuffled.slice(0, count);
 };
