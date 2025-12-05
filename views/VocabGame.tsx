@@ -19,6 +19,7 @@ interface CardItem {
 export const VocabGame: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [leftCol, setLeftCol] = useState<CardItem[]>([]);
   const [rightCol, setRightCol] = useState<CardItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -31,6 +32,16 @@ export const VocabGame: React.FC = () => {
       if (settings.verbForms.length > 0) {
         // Mode 2: Verb Classification (Always use AI for specific forms)
         pool = await generateVerbPractice(settings.verbForms, settings.level, 7);
+        
+        // CRITICAL: If verb forms are selected but API failed, don't use fallback
+        // because fallback data doesn't match the selected verb forms
+        if (!pool || pool.length === 0) {
+          // Show error message to user
+          setError('动词变形练习需要 Gemini API key。\n\n请选择"General Level"模式（不选择动词变形）来使用内置词汇。');
+          setLoading(false);
+          setIsPlaying(false);
+          return;
+        }
       } else {
         // Mode 1: General Level
         // STRATEGY: 
@@ -48,12 +59,20 @@ export const VocabGame: React.FC = () => {
       console.error("Fetch failed", e);
     }
 
-    // Fallback if AI fails or returns empty
+    // Fallback if AI fails or returns empty (ONLY for General Level mode)
     if (!pool || pool.length < 7) {
-      if (settings.level === JLPTLevel.N3) {
-         pool = shuffleArray(N3_VOCAB_LIST).slice(0, 7);
+      // Only use fallback if NOT in verb form mode
+      if (settings.verbForms.length === 0) {
+        if (settings.level === JLPTLevel.N3) {
+           pool = shuffleArray(N3_VOCAB_LIST).slice(0, 7);
+        } else {
+           pool = shuffleArray(MOCK_N5_N4_MIX).slice(0, 7);
+        }
       } else {
-         pool = shuffleArray(MOCK_N5_N4_MIX).slice(0, 7);
+        // Verb form mode but no results - already handled above
+        setLoading(false);
+        setIsPlaying(false);
+        return;
       }
     }
 
@@ -178,6 +197,27 @@ export const VocabGame: React.FC = () => {
          <p className="text-lg md:text-xl font-bold text-peppa-pink">Creating Lesson...</p>
          <p className="text-xs md:text-sm text-peppa-blue">Finding advanced vocabulary...</p>
        </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[60vh] p-4">
+        <div className="text-5xl md:text-6xl mb-4">⚠️</div>
+        <div className="bg-yellow-100 border-4 border-yellow-500 rounded-2xl p-6 max-w-md text-center">
+          <h3 className="text-xl md:text-2xl font-black text-yellow-800 mb-3">提示</h3>
+          <p className="text-sm md:text-base text-yellow-900 whitespace-pre-line mb-4">{error}</p>
+          <button 
+            onClick={() => {
+              setError(null);
+              setIsPlaying(false);
+            }}
+            className="bg-peppa-pink text-white font-bold py-2 px-6 rounded-full hover:bg-peppa-darkPink transition-colors"
+          >
+            返回菜单
+          </button>
+        </div>
+      </div>
     );
   }
 
