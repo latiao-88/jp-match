@@ -13,7 +13,20 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react()],
+      plugins: [
+        react(),
+        // 移除构建后的importmap，因为依赖已经打包
+        {
+          name: 'remove-importmap',
+          transformIndexHtml(html) {
+            if (mode === 'production') {
+              // 移除importmap脚本
+              return html.replace(/<script type="importmap">[\s\S]*?<\/script>/g, '');
+            }
+            return html;
+          },
+        },
+      ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
@@ -26,6 +39,14 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: 'dist',
         assetsDir: 'assets',
+        rollupOptions: {
+          output: {
+            manualChunks: undefined,
+          },
+        },
+      },
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'react-router-dom', 'lucide-react', '@google/genai'],
       }
     };
 });
