@@ -97,9 +97,13 @@ export const VocabGame: React.FC = () => {
     setLoading(false);
   };
 
-  const playAudio = (text: string, isJp: boolean) => {
-    if (isJp) {
-      generateSpeech(text);
+  const playAudio = async (text: string, isJp: boolean) => {
+    if (isJp && text) {
+      try {
+        await generateSpeech(text);
+      } catch (error) {
+        console.error("Failed to play audio:", error);
+      }
     }
   };
 

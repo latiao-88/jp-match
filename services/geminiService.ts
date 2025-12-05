@@ -62,7 +62,10 @@ const fetchAudioBuffer = async (text: string): Promise<AudioBuffer | null> => {
     return audioCache.get(cleanText)!;
   }
 
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.log("No API key, skipping Gemini TTS fetch");
+    return null;
+  }
 
   try {
     const response = await ai.models.generateContent({
@@ -111,29 +114,65 @@ export const preloadSpeech = async (text: string): Promise<void> => {
 
 // Public function to play audio (from cache or fetch)
 export const generateSpeech = async (text: string): Promise<void> => {
-  // Try to get buffer (checks cache internally)
-  const buffer = await fetchAudioBuffer(text);
+  // Re-calculate clean text first to ensure consistent processing
+  const cleanText = text.replace(/\[.*?\]\((.*?)\)/g, '$1').trim();
   
-  // Re-calculate clean text to ensure fallback uses the same logic
-  const cleanText = text.replace(/\[.*?\]\((.*?)\)/g, '$1');
+  if (!cleanText) {
+    console.warn("Empty text for speech generation");
+    return;
+  }
 
-  if (buffer) {
-    const ctx = getAudioContext();
-    // Resume context if suspended (browser requirement for user gesture)
-    if (ctx.state === 'suspended') {
-      await ctx.resume();
+  // If no API key, directly use browser TTS
+  if (!apiKey) {
+    console.log("No API key, using Browser TTS for:", cleanText);
+    try {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(cleanText);
+      u.lang = 'ja-JP';
+      u.rate = 0.9;
+      u.pitch = 1.0;
+      u.volume = 1.0;
+      window.speechSynthesis.speak(u);
+    } catch (error) {
+      console.error("Browser TTS error:", error);
     }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(ctx.destination);
-    source.start();
-  } else {
-    // Fallback to Browser TTS if API failed or no Key
-    console.log("Using Browser TTS Fallback for:", cleanText);
+    return;
+  }
+
+  // Try to get buffer (checks cache internally)
+  try {
+    const buffer = await fetchAudioBuffer(text);
+    
+    if (buffer) {
+      const ctx = getAudioContext();
+      // Resume context if suspended (browser requirement for user gesture)
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start();
+      return;
+    }
+  } catch (error) {
+    console.warn("Gemini TTS failed, falling back to browser TTS:", error);
+  }
+
+  // Fallback to Browser TTS if API failed
+  console.log("Using Browser TTS Fallback for:", cleanText);
+  try {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(cleanText);
     u.lang = 'ja-JP';
-    u.rate = 1.0; 
+    u.rate = 0.9;
+    u.pitch = 1.0;
+    u.volume = 1.0;
     window.speechSynthesis.speak(u);
+  } catch (error) {
+    console.error("Browser TTS error:", error);
   }
 };
 
