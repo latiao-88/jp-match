@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     // GitHub Pages base path - change this to your repository name if different
-    const base = process.env.GITHUB_PAGES_BASE || '/minna-learning---peppa-style/';
+    const base = process.env.GITHUB_PAGES_BASE || '/jp-match/';
     
     return {
       base: base,
