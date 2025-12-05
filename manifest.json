@@ -1,0 +1,17 @@
+{
+  "name": "Minna no Nihongo Match",
+  "short_name": "MinnaApp",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#87CEEB",
+  "theme_color": "#FFC0CB",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
