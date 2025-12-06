@@ -9,7 +9,8 @@ import { shuffleArray } from '../utils';
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
 
 const getApiKey = (): string => {
-  return localStorage.getItem('GEMINI_API_KEY') || process.env.API_KEY || '';
+  // Use localStorage or import.meta.env (Vite standard)
+  return localStorage.getItem('GEMINI_API_KEY') || (import.meta.env.VITE_GEMINI_API_KEY as string) || '';
 };
 
 const SAMPLE_RATE = 24000;

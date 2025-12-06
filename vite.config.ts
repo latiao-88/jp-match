@@ -27,10 +27,6 @@ export default defineConfig(({ mode }) => {
           },
         },
       ],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
@@ -44,9 +40,6 @@ export default defineConfig(({ mode }) => {
             manualChunks: undefined,
           },
         },
-      },
-      optimizeDeps: {
-        include: ['react', 'react-dom', 'react-router-dom', 'lucide-react', '@google/genai'],
       }
     };
 });
