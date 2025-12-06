@@ -1,21 +1,18 @@
-import { GoogleGenAI } from "@google/genai";
 import { VerbForm, JLPTLevel, Vocabulary, Sentence } from '../types';
+import { N3_VOCAB_LIST, MOCK_N5_N4_MIX } from '../data/vocabData';
+import { shuffleArray } from '../utils';
 
-// Helper to get API Key from storage or env
+// ============================================================================
+//  Configuration & State
+// ============================================================================
+
+const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
+
 const getApiKey = (): string => {
   return localStorage.getItem('GEMINI_API_KEY') || process.env.API_KEY || '';
 };
 
-// Initialize AI client dynamically to handle key changes
-const getAIClient = () => {
-  const apiKey = getApiKey();
-  if (!apiKey) return null;
-  return new GoogleGenAI({ apiKey });
-};
-
 const SAMPLE_RATE = 24000;
-
-// Audio Cache and Context Singleton
 const audioCache = new Map<string, AudioBuffer>();
 let sharedAudioContext: AudioContext | null = null;
 
@@ -27,6 +24,56 @@ const getAudioContext = () => {
   return sharedAudioContext;
 };
 
+// ============================================================================
+//  Helper: Raw Fetch to Gemini API
+// ============================================================================
+
+async function callGeminiApi(prompt: string, schema?: any): Promise<any> {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
+  const payload: any = {
+    contents: [{ parts: [{ text: prompt }] }],
+  };
+
+  if (schema) {
+    payload.generationConfig = {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    };
+  } else {
+    payload.generationConfig = {
+      responseMimeType: "application/json"
+    };
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.error(`Gemini API Error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!text) return null;
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Gemini Request Failed:", error);
+    return null;
+  }
+}
+
+// ============================================================================
+//  Audio / TTS
+// ============================================================================
+
 const decodeBase64 = (base64: string): Uint8Array => {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -37,99 +84,77 @@ const decodeBase64 = (base64: string): Uint8Array => {
   return bytes;
 };
 
-const pcmToAudioBuffer = (
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number = SAMPLE_RATE,
-  numChannels: number = 1
-): AudioBuffer => {
+const pcmToAudioBuffer = (data: Uint8Array, ctx: AudioContext): AudioBuffer => {
   const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-    }
+  const frameCount = dataInt16.length;
+  const buffer = ctx.createBuffer(1, frameCount, SAMPLE_RATE);
+  const channelData = buffer.getChannelData(0);
+  for (let i = 0; i < frameCount; i++) {
+    channelData[i] = dataInt16[i] / 32768.0;
   }
   return buffer;
 };
 
-// Internal function to fetch and decode audio, managing cache
 const fetchAudioBuffer = async (text: string): Promise<AudioBuffer | null> => {
   if (!text) return null;
-
-  // Clean text logic
   const cleanText = text.replace(/\[.*?\]\((.*?)\)/g, '$1').trim();
   if (!cleanText) return null;
 
-  // Return cached buffer if exists
-  if (audioCache.has(cleanText)) {
-    return audioCache.get(cleanText)!;
-  }
+  if (audioCache.has(cleanText)) return audioCache.get(cleanText)!;
 
-  const ai = getAIClient();
-  if (!ai) {
-    console.warn("No API Key available for TTS");
-    return null;
-  }
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp", // Use flash-exp or stable model
-      contents: [{ 
-        parts: [{ text: cleanText }] 
-      }],
-      config: {
-        responseModalities: ['AUDIO' as any], 
+    const payload = {
+      contents: [{ parts: [{ text: cleanText }] }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
         speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } }
+        }
+      }
+    };
+
+    const response = await fetch(`${BASE_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
 
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    const base64Audio = part?.inlineData?.data;
+    if (!response.ok) return null;
 
-    if (!base64Audio) {
-      return null;
-    }
+    const data = await response.json();
+    const base64Audio = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
+    if (!base64Audio) return null;
 
     const ctx = getAudioContext();
     const pcmData = decodeBase64(base64Audio);
     const audioBuffer = pcmToAudioBuffer(pcmData, ctx);
     
-    // Store in cache
     audioCache.set(cleanText, audioBuffer);
     return audioBuffer;
-
-  } catch (error) {
-    console.warn("Gemini TTS Fetch Error:", error);
+  } catch (e) {
+    console.error("TTS API Error:", e);
     return null;
   }
 };
 
-// Public function to preload audio in background
 export const preloadSpeech = async (text: string): Promise<void> => {
   await fetchAudioBuffer(text);
 };
 
-// Public function to play audio (from cache or fetch)
 export const generateSpeech = async (text: string): Promise<void> => {
   const cleanText = text.replace(/\[.*?\]\((.*?)\)/g, '$1').trim();
   if (!cleanText) return;
 
-  // 1. Try Gemini TTS first
+  // 1. Try Gemini TTS (Fetch)
   try {
     const buffer = await fetchAudioBuffer(text);
     if (buffer) {
       const ctx = getAudioContext();
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
+      if (ctx.state === 'suspended') await ctx.resume();
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
@@ -137,11 +162,10 @@ export const generateSpeech = async (text: string): Promise<void> => {
       return;
     }
   } catch (e) {
-    console.warn("Gemini TTS failed, using fallback", e);
+    console.warn("Gemini TTS failed, fallback to browser");
   }
 
-  // 2. Fallback to Browser TTS
-  console.log("Using Browser TTS Fallback for:", cleanText);
+  // 2. Browser TTS Fallback
   try {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(cleanText);
@@ -149,106 +173,66 @@ export const generateSpeech = async (text: string): Promise<void> => {
     u.rate = 0.9; 
     window.speechSynthesis.speak(u);
   } catch (err) {
-    console.error("Browser TTS failed", err);
+    console.error("Browser TTS Error", err);
   }
 };
 
-const VERB_TOPICS = [
-  "Daily Life", "Cooking", "Travel", "Work", "Feelings", 
-  "Socializing", "Health", "Nature", "Technology", "Emergency"
-];
+// ============================================================================
+//  Content Generation (Verb / Vocab / Sentences)
+// ============================================================================
 
-const BANNED_VERBS = [
-  "食べます", "飲みます", "行きます", "来ます", "見ます", "します", "寝ます", "起きます", 
-  "勉強します", "買います", "聞きます"
-];
+const VERB_TOPICS = ["Daily Life", "Travel", "Work", "Feelings", "Nature"];
+const BANNED_VERBS = ["食べます", "飲みます", "行きます", "来ます", "見ます", "します", "寝ます"];
 
 export const generateVerbPractice = async (
   forms: VerbForm[],
   level: JLPTLevel,
   count: number = 7
 ): Promise<Vocabulary[]> => {
-    const ai = getAIClient();
-    if (!ai) return [];
+  // If no key, use fallback logic immediately
+  if (!getApiKey()) {
+    console.warn("No API Key, returning empty list to trigger UI prompt");
+    return [];
+  }
 
-    const randomTopic = VERB_TOPICS[Math.floor(Math.random() * VERB_TOPICS.length)];
-    const complexity = level === JLPTLevel.N5 ? "Beginner (N5)" : "Intermediate (N4/N3)";
+  const topic = VERB_TOPICS[Math.floor(Math.random() * VERB_TOPICS.length)];
+  const prompt = `
+    Generate ${count} unique Japanese verbs in these forms: ${forms.join(', ')}.
+    Topic: ${topic}. Level: ${level}.
+    Exclude: ${BANNED_VERBS.join(', ')}.
+    Format: JSON Array.
+    Schema: [{"id":"uuid","kanji":"[Kanji](Kana)","kana":"reading","meaning":"Chinese","form":"formName"}]
+  `;
 
-    const prompt = `
-    Generate ${count} distinct Japanese verbs conjugated in the following forms: ${forms.join(', ')}.
-    Topic: ${randomTopic}.
-    Level: ${complexity}.
-    
-    RULES:
-    1. EXCLUDE these common verbs: ${BANNED_VERBS.join(', ')}.
-    2. Japanese text MUST use ruby format: [Kanji](Kana). 
-       Example: [食](た)べます
-    3. If a specific form is requested, the word MUST be in that form.
-    4. Meaning in Simplified Chinese.
-    5. JSON Format ONLY.
-    
-    Schema:
-    [
-      { "id": "uuid", "kanji": "formatted_string", "kana": "reading", "meaning": "string", "form": "string" }
-    ]
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.0-flash-exp", // Using faster model
-            contents: [{ parts: [{ text: prompt }] }],
-            config: { responseMimeType: "application/json" }
-        });
-        const text = response.text();
-        if (!text) return [];
-        return JSON.parse(text) as Vocabulary[];
-    } catch (e) {
-        console.error("Verb Gen Error", e);
-        return [];
-    }
+  const result = await callGeminiApi(prompt);
+  return result || [];
 };
-
-const VOCAB_TOPICS = [
-  "Business", "Health", "Traffic", "Science", "Nature", "Society", "Emotions", "Culture", "Law"
-];
 
 export const generateVocabulary = async (
   level: JLPTLevel,
   count: number = 7
 ): Promise<Vocabulary[]> => {
-    const ai = getAIClient();
-    if (!ai) return [];
+  // If no key, use fallback local data
+  if (!getApiKey()) {
+    if (level === JLPTLevel.N3) return shuffleArray(N3_VOCAB_LIST).slice(0, count);
+    return shuffleArray(MOCK_N5_N4_MIX).slice(0, count);
+  }
 
-    const randomTopic = VOCAB_TOPICS[Math.floor(Math.random() * VOCAB_TOPICS.length)];
+  const prompt = `
+    Generate ${count} Japanese words for ${level}.
+    Format: JSON Array.
+    Schema: [{"id":"uuid","kanji":"[Kanji](Kana)","kana":"reading","meaning":"Chinese","level":"${level}"}]
+  `;
 
-    const prompt = `
-    Generate ${count} Japanese vocabulary words for JLPT Level ${level}.
-    Topic: ${randomTopic}.
-    
-    RULES:
-    1. Japanese text MUST use ruby format for Kanji: [漢字](かんじ).
-    2. Meaning in Simplified Chinese.
-    3. JSON Format ONLY.
-    
-    Schema:
-    [
-      { "id": "uuid", "kanji": "formatted_string", "kana": "reading", "meaning": "string", "level": "string" }
-    ]
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.0-flash-exp",
-            contents: [{ parts: [{ text: prompt }] }],
-            config: { responseMimeType: "application/json" }
-        });
-        const text = response.text();
-        if (!text) return [];
-        return JSON.parse(text) as Vocabulary[];
-    } catch (e) {
-        console.error("Vocab Gen Error", e);
-        return [];
-    }
+  const result = await callGeminiApi(prompt);
+  
+  // Fallback if API failed
+  if (!result || result.length === 0) {
+    if (level === JLPTLevel.N3) return shuffleArray(N3_VOCAB_LIST).slice(0, count);
+    return shuffleArray(MOCK_N5_N4_MIX).slice(0, count);
+  }
+  
+  return result;
 };
 
 export const generatePracticeContent = async (
@@ -256,36 +240,15 @@ export const generatePracticeContent = async (
   verbForms: VerbForm[],
   count: number = 5
 ): Promise<Sentence[]> => {
-    const ai = getAIClient();
-    if (!ai) return [];
+  if (!getApiKey()) return [];
 
-    const prompt = `
-    Generate ${count} Japanese example sentences.
-    Level: N4/N3.
-    Verb Forms: ${verbForms.join(', ') || 'Any'}.
-    
-    Requirements:
-    1. Use ruby format: [Kanji](Kana).
-    2. Meaning in Simplified Chinese.
-    3. JSON Format ONLY.
-    
-    Schema:
-    [
-      { "id": "uuid", "japanese": "string", "meaning": "string", "lesson": 0, "verbForm": "string" }
-    ]
-    `;
+  const prompt = `
+    Generate ${count} Japanese sentences. Level: N4/N3.
+    Verbs: ${verbForms.join(', ')}.
+    Format: JSON Array.
+    Schema: [{"id":"uuid","japanese":"[Kanji](Kana)...","meaning":"Chinese","lesson":0,"verbForm":"form"}]
+  `;
 
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.0-flash-exp",
-            contents: [{ parts: [{ text: prompt }] }],
-            config: { responseMimeType: "application/json" }
-        });
-        const text = response.text();
-        if (!text) return [];
-        return JSON.parse(text) as Sentence[];
-    } catch (e) {
-        console.error("Sentence Gen Error", e);
-        return [];
-    }
+  const result = await callGeminiApi(prompt);
+  return result || [];
 };
