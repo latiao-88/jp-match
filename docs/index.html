@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Minna Match - Peppa Style</title>
+    <title>Minna Match - Verb Master</title>
     <style>
         :root {
             --peppa-sky: #87CEEB;
@@ -16,9 +16,7 @@
             --peppa-green: #90EE90;
             --peppa-grass: #32CD32;
             --peppa-yellow: #FFFFE0;
-            --peppa-sun: #FFD700;
             --bg-color: #87CEEB;
-            --card-bg: #ffffff;
         }
 
         * {
@@ -31,7 +29,7 @@
         body {
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
             background-color: var(--bg-color);
             height: 100vh;
             width: 100vw;
@@ -40,236 +38,205 @@
             flex-direction: column;
         }
 
-        /* Utility Classes */
         .hidden { display: none !important; }
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .items-center { align-items: center; }
-        .justify-center { justify-content: center; }
-        .justify-between { justify-content: space-between; }
-        .w-full { width: 100%; }
-        .h-full { height: 100%; }
-        .text-center { text-align: center; }
-        .font-bold { font-weight: bold; }
         
         /* Screens */
         .screen {
             width: 100%;
             height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            transition: opacity 0.3s;
             padding: 1rem;
-            padding-top: env(safe-area-inset-top);
+            padding-top: calc(env(safe-area-inset-top) + 20px);
             padding-bottom: env(safe-area-inset-bottom);
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
         }
 
         /* Selection Screen */
         #selection-screen {
             background: linear-gradient(180deg, var(--peppa-sky) 0%, #fff 100%);
-            justify-content: center;
-            gap: 1.5rem;
-            z-index: 10;
+            align-items: center;
         }
 
-        .title {
-            font-size: 2.5rem;
-            color: #fff;
-            text-shadow: 2px 2px 0 var(--peppa-dark-pink);
+        .title-area {
+            text-align: center;
             margin-bottom: 2rem;
         }
 
+        .mode-section {
+            background: rgba(255,255,255,0.8);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--peppa-pink);
+            padding-bottom: 0.5rem;
+        }
+
         .btn {
-            padding: 1rem 2rem;
-            border-radius: 50px;
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            border-radius: 12px;
             border: none;
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: bold;
             color: white;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
             cursor: pointer;
             transition: transform 0.1s;
-            background-color: var(--peppa-blue);
-            border-bottom: 4px solid #1565c0;
+            text-align: center;
         }
+        .btn:active { transform: translateY(3px); box-shadow: none; }
+        
+        .btn-blue { background-color: var(--peppa-blue); }
+        .btn-pink { background-color: var(--peppa-dark-pink); }
+        .btn-green { background-color: var(--peppa-green); color: #005500; }
 
-        .btn:active {
-            transform: translateY(2px);
-            border-bottom: 0;
-            margin-top: 4px;
+        /* Checkbox Grid for Verbs */
+        .verb-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.8rem;
         }
-
-        .btn-secondary {
-            background-color: var(--peppa-dark-pink);
-            border-bottom-color: #d81b60;
+        .verb-opt {
+            background: #fff;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            padding: 0.8rem;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+        }
+        .verb-opt.selected {
+            background-color: var(--peppa-pink);
+            border-color: var(--peppa-dark-pink);
+            color: white;
         }
 
         /* Game Screen */
-        #game-screen {
-            background-color: var(--bg-color);
-        }
-
         #game-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0.5rem;
-            background: rgba(255,255,255,0.9);
-            border-radius: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .score-badge {
-            background: #fff;
             padding: 0.5rem 1rem;
-            border-radius: 20px;
-            border: 2px solid var(--peppa-pink);
-            font-weight: bold;
-            color: var(--peppa-blue);
+            background: rgba(255,255,255,0.9);
+            border-radius: 50px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
+        
         #game-grid {
             display: flex;
-            gap: 1rem;
+            gap: 0.8rem;
             flex: 1;
             overflow-y: auto;
             padding-bottom: 1rem;
         }
-
-        .col {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-        }
+        .col { flex: 1; display: flex; flex-direction: column; gap: 0.8rem; }
 
         .card {
             background: #fff;
             border-radius: 12px;
-            padding: 0.8rem;
-            min-height: 4rem;
+            padding: 0.5rem;
+            min-height: 4.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
             border-bottom: 4px solid #eee;
-            font-size: 1rem;
+            font-size: 1.1rem; /* Slightly larger text */
             cursor: pointer;
-            transition: all 0.2s;
             position: relative;
+            animation: fadeIn 0.3s;
         }
-
-        .card:active {
-            transform: scale(0.98);
-        }
-
-        .card.selected {
-            background-color: var(--peppa-blue);
-            color: white;
-            border-bottom-color: #1565c0;
-            transform: scale(1.02);
-            z-index: 2;
-        }
-
-        .card.matched {
-            opacity: 0;
-            transform: scale(0);
-            pointer-events: none;
-        }
-
-        .card.error {
-            background-color: var(--peppa-red);
-            color: white;
-            animation: shake 0.4s;
-        }
-
-        /* Furigana Styling */
-        ruby {
-            display: inline-flex;
-            flex-direction: column-reverse;
-            align-items: center;
-            vertical-align: bottom;
-        }
-        rt {
-            font-size: 0.6em;
-            line-height: 1;
-            margin-bottom: 0.1em;
-            color: inherit;
-            opacity: 0.7;
-        }
-        .selected rt { color: rgba(255,255,255,0.9); }
+        .card span { pointer-events: none; }
+        
+        .card.selected { background-color: var(--peppa-blue); color: white; border-bottom-color: #1565c0; transform: scale(1.02); z-index: 10; }
+        .card.matched { opacity: 0; transform: scale(0); pointer-events: none; transition: all 0.5s; }
+        .card.error { background-color: var(--peppa-red); color: white; animation: shake 0.4s; }
 
         /* Modal */
         #modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 100;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(5px);
         }
-
         .modal-content {
             background: white;
             padding: 2rem;
             border-radius: 2rem;
             text-align: center;
-            border: 8px solid var(--peppa-pink);
-            animation: bounceIn 0.5s;
-            width: 80%;
+            width: 85%;
             max-width: 320px;
+            animation: bounceIn 0.5s;
         }
 
-        .modal-icon { font-size: 4rem; margin-bottom: 1rem; display: block; }
-        .modal-title { font-size: 1.5rem; font-weight: bold; color: var(--peppa-dark-pink); margin-bottom: 0.5rem; }
-        .modal-text { color: #666; margin-bottom: 1.5rem; }
-
-        /* Animations */
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        @keyframes bounceIn {
-            0% { transform: scale(0.3); opacity: 0; }
-            50% { transform: scale(1.05); }
-            70% { transform: scale(0.9); }
-            100% { transform: scale(1); opacity: 1; }
-        }
+        /* Ruby Support */
+        ruby { display: inline-flex; flex-direction: column-reverse; align-items: center; }
+        rt { font-size: 0.6em; margin-bottom: 0.2em; opacity: 0.7; }
+        
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+        @keyframes bounceIn { 0%{transform:scale(0.3)} 60%{transform:scale(1.1)} 100%{transform:scale(1)} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
     </style>
 </head>
 <body>
 
     <!-- Selection Screen -->
     <div id="selection-screen" class="screen">
-        <div class="text-center">
-            <div style="font-size: 4rem; margin-bottom: 1rem;">🐷</div>
-            <h1 class="title">Minna Match</h1>
+        <div class="title-area">
+            <div style="font-size: 3.5rem;">🐷</div>
+            <h1 style="margin: 0.5rem 0; color: var(--peppa-blue);">日语配对</h1>
+            <p style="margin:0; color:#666; font-size:0.9rem;">修复版 v3.0 - 动词分类回归</p>
+        </div>
+
+        <!-- Mode 1: Vocabulary -->
+        <div class="mode-section">
+            <div class="section-title">📚 单词模式</div>
+            <button class="btn btn-blue" onclick="startGame('N3')">N3 核心词汇</button>
+            <button class="btn btn-green" onclick="startGame('N5')">N4/N5 基础词汇</button>
+        </div>
+
+        <!-- Mode 2: Verb Conjugation -->
+        <div class="mode-section">
+            <div class="section-title">⚡ 动词变形特训</div>
+            <div class="verb-options" id="verb-options">
+                <div class="verb-opt" data-form="masu" onclick="toggleVerbOpt(this)">ます形</div>
+                <div class="verb-opt" data-form="te" onclick="toggleVerbOpt(this)">て形</div>
+                <div class="verb-opt" data-form="nai" onclick="toggleVerbOpt(this)">ない形</div>
+                <div class="verb-opt" data-form="ta" onclick="toggleVerbOpt(this)">た形</div>
+            </div>
+            <button class="btn btn-pink" style="margin-top:1rem;" onclick="startVerbGame()">开始变形练习</button>
         </div>
         
-        <button class="btn" onclick="startGame('N3', false)">N3 词汇</button>
-        <button class="btn btn-secondary" onclick="startGame('N3', true)">N3 动词练习</button>
-        <button class="btn" style="background-color: var(--peppa-green); border-bottom-color: #2e7d32;" onclick="startGame('MOCK', false)">N4/N5 基础</button>
-        
-        <div style="margin-top: 2rem; opacity: 0.6; font-size: 0.8rem; color: #555;">
-            App Version 2025.1 (Single File)
+        <div style="text-align:center; color:#888; font-size:0.8rem; padding:1rem;">
+            💡 提示：苹果手机请关闭静音模式以播放声音
         </div>
     </div>
 
     <!-- Game Screen -->
     <div id="game-screen" class="screen hidden">
         <div id="game-header">
-            <h2 style="margin:0; font-size: 1.2rem; color: var(--peppa-blue);">Minna Match</h2>
-            <div class="score-badge" id="score-display">0 / 7</div>
-            <button onclick="showSelection()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">❌</button>
+            <button onclick="quitGame()" style="background:none;border:none;font-size:1.5rem;">🏠</button>
+            <div style="font-weight:bold; color:var(--peppa-blue); font-size:1.2rem;" id="score-display">0 / 7</div>
+            <div style="width:24px;"></div> <!-- Spacer -->
         </div>
-
         <div id="game-grid">
             <div id="col-left" class="col"></div>
             <div id="col-right" class="col"></div>
@@ -279,249 +246,355 @@
     <!-- Win Modal -->
     <div id="modal-overlay" class="hidden">
         <div class="modal-content">
-            <span class="modal-icon">🎉</span>
-            <h3 class="modal-title">Awesome!</h3>
-            <p class="modal-text">你完成了所有配对！</p>
-            <button class="btn btn-secondary" onclick="showSelection()">返回菜单</button>
+            <div style="font-size:4rem; margin-bottom:1rem;">🎉</div>
+            <h2 style="color:var(--peppa-dark-pink); margin-bottom:0.5rem;">太棒了!</h2>
+            <p>所有单词配对成功！</p>
+            <button class="btn btn-blue" onclick="quitGame()">返回菜单</button>
         </div>
     </div>
 
     <script>
-        // --- DATA ---
-        const VOCAB_DATA = [
-            { id: 'n3_1', kanji: '[経験](けいけん)', kana: 'けいけん', meaning: '经验', level: 'N3' },
-            { id: 'n3_2', kanji: '[習慣](しゅうかん)', kana: 'しゅうかん', meaning: '习惯', level: 'N3' },
-            { id: 'n3_3', kanji: '[製品](せいひん)', kana: 'せいひん', meaning: '产品', level: 'N3' },
-            { id: 'n3_4', kanji: '[法律](ほうりつ)', kana: 'ほうりつ', meaning: '法律', level: 'N3' },
-            { id: 'n3_5', kanji: '[平均](へいきん)', kana: 'へいきん', meaning: '平均', level: 'N3' },
-            { id: 'n3_6', kanji: '[原因](げんいん)', kana: 'げんいん', meaning: '原因', level: 'N3' },
-            { id: 'n3_7', kanji: '[地球](ちきゅう)', kana: 'ちきゅう', meaning: '地球', level: 'N3' },
-            { id: 'n3_8', kanji: '[技術](ぎじゅつ)', kana: 'ぎじゅつ', meaning: '技术', level: 'N3' },
-            { id: 'n3_9', kanji: '[将来](しょうらい)', kana: 'しょうらい', meaning: '将来', level: 'N3' },
-            { id: 'n3_10', kanji: '[手術](しゅじゅつ)', kana: 'しゅじゅつ', meaning: '手术', level: 'N3' },
-            { id: 'n3_v1', kanji: '[伝](つた)えます', kana: 'つたえます', meaning: '传达', level: 'N3' },
-            { id: 'n3_v2', kanji: '[比](くら)べます', kana: 'くらべます', meaning: '比较', level: 'N3' },
-            { id: 'n3_v3', kanji: '[決](き)めます', kana: 'きめます', meaning: '决定', level: 'N3' },
-            { id: 'n3_v4', kanji: '[調](しら)べます', kana: 'しらべます', meaning: '调查', level: 'N3' },
-            { id: 'n3_v5', kanji: '[続](つづ)けます', kana: 'つづけます', meaning: '继续', level: 'N3' },
-            { id: 'n3_a1', kanji: '[複雑](ふくざつ)', kana: 'ふくざつ', meaning: '复杂', level: 'N3' },
-            { id: 'n3_a2', kanji: '[丁寧](ていねい)', kana: 'ていねい', meaning: '礼貌', level: 'N3' },
-            { id: 'n3_a3', kanji: '[危険](きけん)', kana: 'きけん', meaning: '危险', level: 'N3' },
-            { id: 'm1', kanji: '[猫](ねこ)', kana: 'ねこ', meaning: '猫', level: 'N5' },
-            { id: 'm2', kanji: '[犬](いぬ)', kana: 'いぬ', meaning: '狗', level: 'N5' },
-            { id: 'm3', kanji: '[食](た)べます', kana: 'たべます', meaning: '吃', level: 'N5' },
-            { id: 'm4', kanji: '[飲](の)みます', kana: 'のみます', meaning: '喝', level: 'N5' },
-            { id: 'm5', kanji: '[行](い)きます', kana: 'いきます', meaning: '去', level: 'N5' }
+        // --- DATA: Expanded with Verb Groups ---
+        // Groups: 1 (u-verbs), 2 (ru-verbs), 3 (irregular)
+        const VERBS = [
+            { id: 'v1', kanji: '行', kana: 'い', end: 'く', group: 1, meaning: '去' },
+            { id: 'v2', kanji: '飲', kana: 'の', end: 'む', group: 1, meaning: '喝' },
+            { id: 'v3', kanji: '読', kana: 'よ', end: 'む', group: 1, meaning: '读' },
+            { id: 'v4', kanji: '買', kana: 'か', end: 'う', group: 1, meaning: '买' },
+            { id: 'v5', kanji: '待', kana: 'ま', end: 'つ', group: 1, meaning: '等' },
+            { id: 'v6', kanji: '帰', kana: 'かえ', end: 'る', group: 1, meaning: '回家' },
+            { id: 'v7', kanji: '話', kana: 'はな', end: 'す', group: 1, meaning: '说话' },
+            { id: 'v8', kanji: '泳', kana: 'およ', end: 'ぐ', group: 1, meaning: '游泳' },
+            { id: 'v9', kanji: '遊', kana: 'あそ', end: 'ぶ', group: 1, meaning: '玩' },
+            { id: 'v10', kanji: '死', kana: 'し', end: 'ぬ', group: 1, meaning: '死' },
+            { id: 'v11', kanji: '食', kana: 'た', end: 'べる', group: 2, meaning: '吃' },
+            { id: 'v12', kanji: '見', kana: 'み', end: 'る', group: 2, meaning: '看' },
+            { id: 'v13', kanji: '寝', kana: 'ね', end: 'る', group: 2, meaning: '睡觉' },
+            { id: 'v14', kanji: '起', kana: 'お', end: 'きる', group: 2, meaning: '起床' },
+            { id: 'v15', kanji: '借', kana: 'か', end: 'りる', group: 2, meaning: '借入' },
+            { id: 'v16', kanji: '', kana: '', end: 'する', group: 3, meaning: '做(Suru)' },
+            { id: 'v17', kanji: '', kana: '', end: 'くる', group: 3, meaning: '来(Kuru)' },
+            { id: 'v18', kanji: '勉強', kana: 'べんきょう', end: 'する', group: 3, meaning: '学习' },
         ];
 
-        // --- STATE ---
-        let currentState = {
-            cards: [], // { id, text, type, matchId, status, originalKana }
+        const VOCAB_N3 = [
+             { id: 'n3_1', kanji: '[経験](けいけん)', kana: 'けいけん', meaning: '经验' },
+             { id: 'n3_2', kanji: '[習慣](しゅうかん)', kana: 'しゅうかん', meaning: '习惯' },
+             { id: 'n3_3', kanji: '[製品](せいひん)', kana: 'せいひん', meaning: '产品' },
+             { id: 'n3_4', kanji: '[法律](ほうりつ)', kana: 'ほうりつ', meaning: '法律' },
+             { id: 'n3_5', kanji: '[平均](へいきん)', kana: 'へいきん', meaning: '平均' },
+             { id: 'n3_6', kanji: '[原因](げんいん)', kana: 'げんいん', meaning: '原因' },
+             { id: 'n3_7', kanji: '[地球](ちきゅう)', kana: 'ちきゅう', meaning: '地球' },
+             { id: 'n3_8', kanji: '[技術](ぎじゅつ)', kana: 'ぎじゅつ', meaning: '技术' },
+             { id: 'n3_9', kanji: '[将来](しょうらい)', kana: 'しょうらい', meaning: '将来' },
+             { id: 'n3_10', kanji: '[手術](しゅじゅつ)', kana: 'しゅじゅつ', meaning: '手术' },
+             { id: 'n3_a1', kanji: '[複雑](ふくざつ)', kana: 'ふくざつ', meaning: '复杂' },
+             { id: 'n3_a2', kanji: '[丁寧](ていねい)', kana: 'ていねい', meaning: '礼貌' },
+             { id: 'n3_a3', kanji: '[危険](きけん)', kana: 'きけん', meaning: '危险' }
+        ];
+
+        const VOCAB_N5 = [
+            { id: 'm1', kanji: '[猫](ねこ)', kana: 'ねこ', meaning: '猫' },
+            { id: 'm2', kanji: '[犬](いぬ)', kana: 'いぬ', meaning: '狗' },
+            { id: 'm3', kanji: '[水](みず)', kana: 'みず', meaning: '水' },
+            { id: 'm4', kanji: '[本](ほん)', kana: 'ほん', meaning: '书' },
+            { id: 'm5', kanji: '[学校](がっこう)', kana: 'がっこう', meaning: '学校' },
+            { id: 'm6', kanji: '[友達](ともだち)', kana: 'ともだち', meaning: '朋友' },
+            { id: 'm7', kanji: '[天気](てんき)', kana: 'てんき', meaning: '天气' },
+            { id: 'm8', kanji: '[部屋](へや)', kana: 'へや', meaning: '房间' },
+            { id: 'm9', kanji: '[先生](せんせい)', kana: 'せんせい', meaning: '老师' },
+            { id: 'm10', kanji: '[学生](がくせい)', kana: 'がくせい', meaning: '学生' }
+        ];
+
+        // --- CONJUGATOR LOGIC (No AI needed!) ---
+        function conjugate(verb, formType) {
+            const stem = verb.kanji ? `[${verb.kanji}](${verb.kana})` : verb.kana; // Simplified for display
+            const plainEnd = verb.end;
+            let resultEnd = '';
+
+            if (verb.group === 1) {
+                // U-verbs
+                if (formType === 'masu') {
+                    const map = {'う':'い','く':'き','ぐ':'ぎ','す':'し','つ':'ち','ぬ':'に','ぶ':'び','む':'み','る':'り'};
+                    resultEnd = map[plainEnd] + 'ます';
+                } else if (formType === 'nai') {
+                    const map = {'う':'わ','く':'か','ぐ':'が','す':'さ','つ':'た','ぬ':'な','ぶ':'ば','む':'ま','る':'ら'};
+                    resultEnd = map[plainEnd] + 'ない';
+                } else if (formType === 'te' || formType === 'ta') {
+                    let suffix = formType === 'te' ? 'て' : 'た';
+                    let voicedSuffix = formType === 'te' ? 'で' : 'だ';
+                    if (['う','つ','る'].includes(plainEnd)) resultEnd = 'っ' + suffix;
+                    else if (['む','ぶ','ぬ'].includes(plainEnd)) resultEnd = 'ん' + voicedSuffix;
+                    else if (plainEnd === 'く') resultEnd = (stem === '[行](い)' || stem === 'い') ? 'っ' + suffix : 'い' + suffix;
+                    else if (plainEnd === 'ぐ') resultEnd = 'い' + voicedSuffix;
+                    else if (plainEnd === 'す') resultEnd = 'し' + suffix;
+                }
+            } else if (verb.group === 2) {
+                // Ru-verbs
+                if (formType === 'masu') resultEnd = 'ます';
+                else if (formType === 'nai') resultEnd = 'ない';
+                else if (formType === 'te') resultEnd = 'て';
+                else if (formType === 'ta') resultEnd = 'た';
+            } else if (verb.group === 3) {
+                // Irregular
+                const isSuru = plainEnd === 'する';
+                const isKuru = plainEnd === 'くる';
+                
+                if (isSuru) {
+                    if (formType === 'masu') resultEnd = 'します';
+                    if (formType === 'nai') resultEnd = 'しない';
+                    if (formType === 'te') resultEnd = 'して';
+                    if (formType === 'ta') resultEnd = 'した';
+                } else if (isKuru) {
+                    // Kuru is tricky with kanji reading changes, simplified here
+                    if (formType === 'masu') return '来(き)ます';
+                    if (formType === 'nai') return '来(こ)ない';
+                    if (formType === 'te') return '来(き)て';
+                    if (formType === 'ta') return '来(き)た';
+                }
+            }
+            
+            // Construct full string
+            // Special case: Suru/Kuru base might be empty string for pure helper, or part of Kanji
+            if (verb.kanji) {
+                // e.g. 行 + く -> 行 + きます
+                return `[${verb.kanji}](${verb.kana})${resultEnd}`;
+            } else {
+                 // e.g. くる -> きます (handled above mostly) or 勉強 + する
+                 return `${stem}${resultEnd}`;
+            }
+        }
+
+        // --- STATE & GAME LOGIC ---
+        let state = {
+            cards: [],
+            matches: 0,
             selectedId: null,
-            matches: 0
+            selectedVerbs: []
         };
 
-        // --- LOGIC ---
-        function shuffle(array) {
-            return array.sort(() => Math.random() - 0.5);
-        }
-
-        function parseRuby(text) {
-            // Replaces [Kanji](kana) with <ruby>Kanji<rt>kana</rt></ruby>
-            return text.replace(/\[(.*?)\]\((.*?)\)/g, '<ruby>$1<rt>$2</rt></ruby>');
-        }
-
-        function cleanText(text) {
-            // Remove ruby syntax for matching keys or simple display
-            return text.replace(/\[(.*?)\]\((.*?)\)/g, '$1');
-        }
-
-        function startGame(mode, isVerb) {
-            // Filter Data
-            let pool = [];
-            if (mode === 'MOCK') {
-                pool = VOCAB_DATA.filter(v => v.level === 'N5');
-            } else if (isVerb) {
-                pool = VOCAB_DATA.filter(v => v.id.startsWith('n3_v'));
+        // --- UI HANDLERS ---
+        function toggleVerbOpt(el) {
+            el.classList.toggle('selected');
+            const form = el.dataset.form;
+            if (state.selectedVerbs.includes(form)) {
+                state.selectedVerbs = state.selectedVerbs.filter(f => f !== form);
             } else {
-                // General N3
-                pool = VOCAB_DATA.filter(v => v.level === 'N3');
+                state.selectedVerbs.push(form);
             }
+        }
 
-            // Ensure enough cards (repeat if not enough for demo)
-            if (pool.length < 7) pool = [...pool, ...pool].slice(0, 7);
-            else pool = shuffle(pool).slice(0, 7);
+        function startGame(mode) {
+            let pool = [];
+            if (mode === 'N3') pool = VOCAB_N3;
+            else if (mode === 'N5') pool = VOCAB_N5;
+            
+            // Shuffle and pick 7
+            pool = pool.sort(() => Math.random() - 0.5).slice(0, 7);
+            
+            // Create Pairs: Kanji/Kana <-> Meaning
+            const pairs = pool.map(item => ({
+                id: item.id,
+                left: item.kanji, // Display with Ruby
+                right: item.meaning,
+                kana: item.kana, // For Audio
+                isLeftJp: true
+            }));
+            
+            initGame(pairs);
+        }
 
-            // Create Card Pairs
+        function startVerbGame() {
+            if (state.selectedVerbs.length === 0) {
+                alert("请至少选择一种变形形式！");
+                return;
+            }
+            
+            // Pick random verbs
+            const pool = VERBS.sort(() => Math.random() - 0.5).slice(0, 7);
+            
+            const pairs = pool.map((v, idx) => {
+                // Randomly pick one of the selected forms to match against Dictionary Form
+                const targetForm = state.selectedVerbs[Math.floor(Math.random() * state.selectedVerbs.length)];
+                const conjugated = conjugate(v, targetForm);
+                
+                // Pair: Dictionary Form <-> Conjugated Form
+                // Display: [行](い)く <-> [行](い)きます
+                const dictForm = v.kanji ? `[${v.kanji}](${v.kana})${v.end}` : (v.kana || '') + v.end;
+                
+                return {
+                    id: 'v_' + idx,
+                    left: dictForm,
+                    right: conjugated,
+                    kana: v.kana + v.end, // Approx audio for dict form
+                    isLeftJp: true,
+                    isVerbMode: true
+                };
+            });
+            
+            initGame(pairs);
+        }
+
+        function initGame(pairs) {
             const jpOnLeft = Math.random() > 0.5;
-            const cardsA = [];
-            const cardsB = [];
+            let leftCards = [], rightCards = [];
 
-            pool.forEach(v => {
-                // Left Card
-                cardsA.push({
-                    id: v.id + '-A',
-                    text: jpOnLeft ? v.kanji : v.meaning,
-                    type: jpOnLeft ? 'jp' : 'cn',
-                    matchId: v.id,
-                    status: 'default',
-                    originalKana: v.kana
-                });
-                // Right Card
-                cardsB.push({
-                    id: v.id + '-B',
-                    text: jpOnLeft ? v.meaning : v.kanji,
-                    type: jpOnLeft ? 'cn' : 'jp',
-                    matchId: v.id,
-                    status: 'default',
-                    originalKana: v.kana
-                });
+            pairs.forEach(p => {
+                const txtA = jpOnLeft ? p.left : p.right;
+                const txtB = jpOnLeft ? p.right : p.left;
+                const typeA = jpOnLeft ? 'jp' : 'cn';
+                const typeB = jpOnLeft ? 'cn' : 'jp';
+                
+                leftCards.push({ id: p.id+'-A', text: txtA, type: typeA, matchId: p.id, status: 'default', kana: p.kana });
+                rightCards.push({ id: p.id+'-B', text: txtB, type: typeB, matchId: p.id, status: 'default', kana: p.kana });
             });
 
-            currentState.cards = [...cardsA, ...cardsB]; // Store all for lookup
-            currentState.leftCards = shuffle(cardsA);
-            currentState.rightCards = shuffle(cardsB);
-            currentState.matches = 0;
-            currentState.selectedId = null;
+            state.cards = [...leftCards, ...rightCards];
+            state.leftCards = leftCards.sort(() => Math.random() - 0.5);
+            state.rightCards = rightCards.sort(() => Math.random() - 0.5);
+            state.matches = 0;
+            state.selectedId = null;
 
-            // UI Update
             document.getElementById('selection-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('score-display').innerText = "0 / 7";
             
             renderBoard();
-            updateScore();
+            
+            // Try to "warm up" audio on iOS
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance(''); 
+                window.speechSynthesis.speak(u);
+            }
         }
 
-        function showSelection() {
+        function renderBoard() {
+            const leftEl = document.getElementById('col-left');
+            const rightEl = document.getElementById('col-right');
+            leftEl.innerHTML = ''; rightEl.innerHTML = '';
+            
+            state.leftCards.forEach(c => leftEl.appendChild(createCard(c)));
+            state.rightCards.forEach(c => rightEl.appendChild(createCard(c)));
+        }
+
+        function createCard(card) {
+            const el = document.createElement('div');
+            el.className = `card ${card.status}`;
+            el.dataset.id = card.id;
+            el.onclick = () => handleCardClick(card.id);
+            
+            if (card.type === 'jp' || card.text.includes('[')) {
+                // Ruby Parsing
+                el.innerHTML = card.text.replace(/\[(.*?)\]\((.*?)\)/g, '<ruby>$1<rt>$2</rt></ruby>');
+                // Add Sound Icon if JP
+                if (card.type === 'jp' || card.text.match(/[\u3040-\u30ff]/)) {
+                   el.innerHTML += '<span style="opacity:0.5; font-size:0.8rem; margin-left:4px"> 🔊</span>';
+                }
+            } else {
+                el.innerText = card.text;
+            }
+            return el;
+        }
+
+        function handleCardClick(id) {
+            const card = state.cards.find(c => c.id === id);
+            if (!card || card.status === 'matched') return;
+
+            // PLAY AUDIO
+            // Logic: Play if it's the Japanese side, OR if we are in Verb Mode (both sides are JP)
+            const isJp = card.type === 'jp' || card.text.match(/[ぁ-んァ-ン]/);
+            if (isJp) {
+                // Clean text for speaking: Remove [Kanji](reading) -> Reading
+                // Also remove symbol characters
+                let speakText = card.text.replace(/\[.*?\]\((.*?)\)/g, '$1');
+                speak(speakText);
+            }
+
+            // GAME LOGIC
+            if (state.selectedId === id) {
+                state.selectedId = null;
+                updateStatus(id, 'default');
+                return;
+            }
+
+            if (!state.selectedId) {
+                state.selectedId = id;
+                updateStatus(id, 'selected');
+            } else {
+                const prevId = state.selectedId;
+                const prevCard = state.cards.find(c => c.id === prevId);
+                
+                // Same column check
+                const isLeft = state.leftCards.some(c => c.id === id);
+                const isPrevLeft = state.leftCards.some(c => c.id === prevId);
+                if (isLeft === isPrevLeft) {
+                    updateStatus(prevId, 'default');
+                    state.selectedId = id;
+                    updateStatus(id, 'selected');
+                    return;
+                }
+
+                if (prevCard.matchId === card.matchId) {
+                    updateStatus(prevId, 'matched');
+                    updateStatus(id, 'matched');
+                    state.selectedId = null;
+                    state.matches++;
+                    document.getElementById('score-display').innerText = `${state.matches} / 7`;
+                    if (state.matches === 7) {
+                        setTimeout(() => {
+                             document.getElementById('modal-overlay').classList.remove('hidden');
+                             // Victory sound
+                             speak("おめでとうございます");
+                        }, 800);
+                    }
+                } else {
+                    updateStatus(prevId, 'error');
+                    updateStatus(id, 'error');
+                    state.selectedId = null;
+                    setTimeout(() => {
+                        updateStatus(prevId, 'default');
+                        updateStatus(id, 'default');
+                    }, 600);
+                }
+            }
+        }
+
+        function updateStatus(id, status) {
+            const card = state.cards.find(c => c.id === id);
+            if (card) card.status = status;
+            const el = document.querySelector(`.card[data-id="${id}"]`);
+            if (el) el.className = `card ${status}`;
+        }
+
+        function quitGame() {
             document.getElementById('game-screen').classList.add('hidden');
             document.getElementById('modal-overlay').classList.add('hidden');
             document.getElementById('selection-screen').classList.remove('hidden');
         }
 
-        function createCardElement(card) {
-            const el = document.createElement('div');
-            el.className = `card ${card.status}`;
-            el.dataset.id = card.id;
-            
-            // Content
-            if (card.type === 'jp') {
-                el.innerHTML = `<span>${parseRuby(card.text)}</span> <span style="font-size:0.8rem; margin-left:4px">🔊</span>`;
-            } else {
-                el.innerText = card.text;
-            }
-
-            el.onclick = () => handleCardClick(card.id);
-            return el;
-        }
-
-        function renderBoard() {
-            const leftContainer = document.getElementById('col-left');
-            const rightContainer = document.getElementById('col-right');
-            leftContainer.innerHTML = '';
-            rightContainer.innerHTML = '';
-
-            currentState.leftCards.forEach(card => {
-                leftContainer.appendChild(createCardElement(card));
-            });
-            currentState.rightCards.forEach(card => {
-                rightContainer.appendChild(createCardElement(card));
-            });
-        }
-
-        function updateCardStatus(id, status) {
-            // Update State
-            const card = currentState.cards.find(c => c.id === id);
-            if (card) card.status = status;
-            
-            // Update UI
-            const el = document.querySelector(`.card[data-id="${id}"]`);
-            if (el) {
-                el.className = `card ${status}`;
-            }
-        }
-
-        function updateScore() {
-            document.getElementById('score-display').innerText = `${currentState.matches} / 7`;
-        }
-
-        function handleCardClick(id) {
-            const card = currentState.cards.find(c => c.id === id);
-            if (!card || card.status === 'matched') return;
-
-            // Audio
-            if (card.type === 'jp') {
-                speak(card.originalKana);
-            }
-
-            // Selection Logic
-            if (currentState.selectedId === id) {
-                // Deselect
-                currentState.selectedId = null;
-                updateCardStatus(id, 'default');
-                return;
-            }
-
-            if (!currentState.selectedId) {
-                // Select First
-                currentState.selectedId = id;
-                updateCardStatus(id, 'selected');
-            } else {
-                // Select Second
-                const prevId = currentState.selectedId;
-                const prevCard = currentState.cards.find(c => c.id === prevId);
-
-                // Prevent same side selection (simple check: if both are in left or both in right)
-                const isLeft = currentState.leftCards.some(c => c.id === id);
-                const isPrevLeft = currentState.leftCards.some(c => c.id === prevId);
-
-                if (isLeft === isPrevLeft) {
-                    // Switch selection
-                    updateCardStatus(prevId, 'default');
-                    currentState.selectedId = id;
-                    updateCardStatus(id, 'selected');
-                    return;
-                }
-
-                // Check Match
-                if (prevCard.matchId === card.matchId) {
-                    // Match!
-                    updateCardStatus(prevId, 'matched');
-                    updateCardStatus(id, 'matched');
-                    currentState.selectedId = null;
-                    currentState.matches++;
-                    updateScore();
-
-                    if (currentState.matches >= 7) {
-                        setTimeout(() => {
-                            document.getElementById('modal-overlay').classList.remove('hidden');
-                        }, 500);
-                    }
-                } else {
-                    // Error
-                    updateCardStatus(prevId, 'error');
-                    updateCardStatus(id, 'error');
-                    currentState.selectedId = null;
-
-                    setTimeout(() => {
-                        updateCardStatus(prevId, 'default');
-                        updateCardStatus(id, 'default');
-                    }, 800);
-                }
-            }
-        }
-
-        // --- AUDIO ---
+        // --- ROBUST AUDIO ---
         function speak(text) {
             if (!window.speechSynthesis) return;
-            // Cancel previous
             window.speechSynthesis.cancel();
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ja-JP';
-            utterance.rate = 0.9;
-            window.speechSynthesis.speak(utterance);
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'ja-JP'; // Critical for iOS
+            u.rate = 0.9;
+            
+            // iOS Safari Voice Fix: Find a Japanese voice
+            const voices = window.speechSynthesis.getVoices();
+            const jpVoice = voices.find(v => v.lang.includes('ja'));
+            if (jpVoice) u.voice = jpVoice;
+            
+            window.speechSynthesis.speak(u);
         }
-    </script>
+        
+        // Ensure voices are loaded
+        window.speechSynthesis.onvoiceschanged = () => {
+            console.log("Voices loaded");
+        };
+</script>
 </body>
 </html>
