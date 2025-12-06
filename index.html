@@ -1,109 +1,527 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    
-    <!-- PWA Configuration -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="日语配对" />
-    <meta name="theme-color" content="#87CEEB" />
-    <link rel="manifest" href="./manifest.json" />
-    <link rel="apple-touch-icon" href="./icon-192.png" />
-
-    <title>日语配对 - PWA</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              peppa: {
-                pink: '#FFC0CB',
-                darkPink: '#FF69B4',
-                red: '#FF4500',
-                sky: '#87CEEB',
-                blue: '#1E90FF',
-                green: '#90EE90',
-                grass: '#32CD32',
-                yellow: '#FFFFE0',
-                sun: '#FFD700',
-                mud: '#8B4513'
-              }
-            },
-            fontFamily: {
-              rounded: ['ui-rounded', 'Hiragino Maru Gothic ProN', 'Quicksand', 'Arial Rounded MT Bold', 'sans-serif']
-            }
-          }
-        }
-      }
-    </script>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Minna Match - Peppa Style</title>
     <style>
-      * {
-        -webkit-tap-highlight-color: transparent;
-        -webkit-touch-callout: none;
-      }
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow-x: hidden;
-        overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
-      }
-      body {
-        font-family: 'ui-rounded', 'Hiragino Maru Gothic ProN', 'Quicksand', 'Arial Rounded MT Bold', sans-serif;
-        background-color: #87CEEB; /* Sky Blue Base */
-        position: relative;
-      }
-      #root {
-        width: 100%;
-        min-height: 100vh;
-      }
-      /* Custom Scrollbar for cute look */
-      ::-webkit-scrollbar {
-        width: 12px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #FF69B4;
-        border-radius: 10px;
-      }
-      ruby {
-        display: inline-flex;
-        flex-direction: column-reverse;
-        align-items: center;
-        vertical-align: bottom;
-      }
-      rt {
-        font-size: 0.6em;
-        line-height: 1;
-        margin-bottom: 0.1em;
-        color: #555;
-      }
+        :root {
+            --peppa-sky: #87CEEB;
+            --peppa-pink: #FFC0CB;
+            --peppa-dark-pink: #FF69B4;
+            --peppa-red: #FF4500;
+            --peppa-blue: #1E90FF;
+            --peppa-green: #90EE90;
+            --peppa-grass: #32CD32;
+            --peppa-yellow: #FFFFE0;
+            --peppa-sun: #FFD700;
+            --bg-color: #87CEEB;
+            --card-bg: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Utility Classes */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .w-full { width: 100%; }
+        .h-full { height: 100%; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        
+        /* Screens */
+        .screen {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: opacity 0.3s;
+            padding: 1rem;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Selection Screen */
+        #selection-screen {
+            background: linear-gradient(180deg, var(--peppa-sky) 0%, #fff 100%);
+            justify-content: center;
+            gap: 1.5rem;
+            z-index: 10;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            color: #fff;
+            text-shadow: 2px 2px 0 var(--peppa-dark-pink);
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.1s;
+            background-color: var(--peppa-blue);
+            border-bottom: 4px solid #1565c0;
+        }
+
+        .btn:active {
+            transform: translateY(2px);
+            border-bottom: 0;
+            margin-top: 4px;
+        }
+
+        .btn-secondary {
+            background-color: var(--peppa-dark-pink);
+            border-bottom-color: #d81b60;
+        }
+
+        /* Game Screen */
+        #game-screen {
+            background-color: var(--bg-color);
+        }
+
+        #game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: rgba(255,255,255,0.9);
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .score-badge {
+            background: #fff;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 2px solid var(--peppa-pink);
+            font-weight: bold;
+            color: var(--peppa-blue);
+        }
+
+        #game-grid {
+            display: flex;
+            gap: 1rem;
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 1rem;
+        }
+
+        .col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 0.8rem;
+            min-height: 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 4px solid #eee;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .card:active {
+            transform: scale(0.98);
+        }
+
+        .card.selected {
+            background-color: var(--peppa-blue);
+            color: white;
+            border-bottom-color: #1565c0;
+            transform: scale(1.02);
+            z-index: 2;
+        }
+
+        .card.matched {
+            opacity: 0;
+            transform: scale(0);
+            pointer-events: none;
+        }
+
+        .card.error {
+            background-color: var(--peppa-red);
+            color: white;
+            animation: shake 0.4s;
+        }
+
+        /* Furigana Styling */
+        ruby {
+            display: inline-flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            vertical-align: bottom;
+        }
+        rt {
+            font-size: 0.6em;
+            line-height: 1;
+            margin-bottom: 0.1em;
+            color: inherit;
+            opacity: 0.7;
+        }
+        .selected rt { color: rgba(255,255,255,0.9); }
+
+        /* Modal */
+        #modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 2rem;
+            text-align: center;
+            border: 8px solid var(--peppa-pink);
+            animation: bounceIn 0.5s;
+            width: 80%;
+            max-width: 320px;
+        }
+
+        .modal-icon { font-size: 4rem; margin-bottom: 1rem; display: block; }
+        .modal-title { font-size: 1.5rem; font-weight: bold; color: var(--peppa-dark-pink); margin-bottom: 0.5rem; }
+        .modal-text { color: #666; margin-bottom: 1.5rem; }
+
+        /* Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/index.tsx"></script>
-    
-    <!-- Service Worker Registration -->
+<body>
+
+    <!-- Selection Screen -->
+    <div id="selection-screen" class="screen">
+        <div class="text-center">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🐷</div>
+            <h1 class="title">Minna Match</h1>
+        </div>
+        
+        <button class="btn" onclick="startGame('N3', false)">N3 词汇</button>
+        <button class="btn btn-secondary" onclick="startGame('N3', true)">N3 动词练习</button>
+        <button class="btn" style="background-color: var(--peppa-green); border-bottom-color: #2e7d32;" onclick="startGame('MOCK', false)">N4/N5 基础</button>
+        
+        <div style="margin-top: 2rem; opacity: 0.6; font-size: 0.8rem; color: #555;">
+            App Version 2025.1 (Single File)
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen hidden">
+        <div id="game-header">
+            <h2 style="margin:0; font-size: 1.2rem; color: var(--peppa-blue);">Minna Match</h2>
+            <div class="score-badge" id="score-display">0 / 7</div>
+            <button onclick="showSelection()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">❌</button>
+        </div>
+
+        <div id="game-grid">
+            <div id="col-left" class="col"></div>
+            <div id="col-right" class="col"></div>
+        </div>
+    </div>
+
+    <!-- Win Modal -->
+    <div id="modal-overlay" class="hidden">
+        <div class="modal-content">
+            <span class="modal-icon">🎉</span>
+            <h3 class="modal-title">Awesome!</h3>
+            <p class="modal-text">你完成了所有配对！</p>
+            <button class="btn btn-secondary" onclick="showSelection()">返回菜单</button>
+        </div>
+    </div>
+
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(registration => {
-              console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-              console.log('SW registration failed: ', registrationError);
+        // --- DATA ---
+        const VOCAB_DATA = [
+            { id: 'n3_1', kanji: '[経験](けいけん)', kana: 'けいけん', meaning: '经验', level: 'N3' },
+            { id: 'n3_2', kanji: '[習慣](しゅうかん)', kana: 'しゅうかん', meaning: '习惯', level: 'N3' },
+            { id: 'n3_3', kanji: '[製品](せいひん)', kana: 'せいひん', meaning: '产品', level: 'N3' },
+            { id: 'n3_4', kanji: '[法律](ほうりつ)', kana: 'ほうりつ', meaning: '法律', level: 'N3' },
+            { id: 'n3_5', kanji: '[平均](へいきん)', kana: 'へいきん', meaning: '平均', level: 'N3' },
+            { id: 'n3_6', kanji: '[原因](げんいん)', kana: 'げんいん', meaning: '原因', level: 'N3' },
+            { id: 'n3_7', kanji: '[地球](ちきゅう)', kana: 'ちきゅう', meaning: '地球', level: 'N3' },
+            { id: 'n3_8', kanji: '[技術](ぎじゅつ)', kana: 'ぎじゅつ', meaning: '技术', level: 'N3' },
+            { id: 'n3_9', kanji: '[将来](しょうらい)', kana: 'しょうらい', meaning: '将来', level: 'N3' },
+            { id: 'n3_10', kanji: '[手術](しゅじゅつ)', kana: 'しゅじゅつ', meaning: '手术', level: 'N3' },
+            { id: 'n3_v1', kanji: '[伝](つた)えます', kana: 'つたえます', meaning: '传达', level: 'N3' },
+            { id: 'n3_v2', kanji: '[比](くら)べます', kana: 'くらべます', meaning: '比较', level: 'N3' },
+            { id: 'n3_v3', kanji: '[決](き)めます', kana: 'きめます', meaning: '决定', level: 'N3' },
+            { id: 'n3_v4', kanji: '[調](しら)べます', kana: 'しらべます', meaning: '调查', level: 'N3' },
+            { id: 'n3_v5', kanji: '[続](つづ)けます', kana: 'つづけます', meaning: '继续', level: 'N3' },
+            { id: 'n3_a1', kanji: '[複雑](ふくざつ)', kana: 'ふくざつ', meaning: '复杂', level: 'N3' },
+            { id: 'n3_a2', kanji: '[丁寧](ていねい)', kana: 'ていねい', meaning: '礼貌', level: 'N3' },
+            { id: 'n3_a3', kanji: '[危険](きけん)', kana: 'きけん', meaning: '危险', level: 'N3' },
+            { id: 'm1', kanji: '[猫](ねこ)', kana: 'ねこ', meaning: '猫', level: 'N5' },
+            { id: 'm2', kanji: '[犬](いぬ)', kana: 'いぬ', meaning: '狗', level: 'N5' },
+            { id: 'm3', kanji: '[食](た)べます', kana: 'たべます', meaning: '吃', level: 'N5' },
+            { id: 'm4', kanji: '[飲](の)みます', kana: 'のみます', meaning: '喝', level: 'N5' },
+            { id: 'm5', kanji: '[行](い)きます', kana: 'いきます', meaning: '去', level: 'N5' }
+        ];
+
+        // --- STATE ---
+        let currentState = {
+            cards: [], // { id, text, type, matchId, status, originalKana }
+            selectedId: null,
+            matches: 0
+        };
+
+        // --- LOGIC ---
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function parseRuby(text) {
+            // Replaces [Kanji](kana) with <ruby>Kanji<rt>kana</rt></ruby>
+            return text.replace(/\[(.*?)\]\((.*?)\)/g, '<ruby>$1<rt>$2</rt></ruby>');
+        }
+
+        function cleanText(text) {
+            // Remove ruby syntax for matching keys or simple display
+            return text.replace(/\[(.*?)\]\((.*?)\)/g, '$1');
+        }
+
+        function startGame(mode, isVerb) {
+            // Filter Data
+            let pool = [];
+            if (mode === 'MOCK') {
+                pool = VOCAB_DATA.filter(v => v.level === 'N5');
+            } else if (isVerb) {
+                pool = VOCAB_DATA.filter(v => v.id.startsWith('n3_v'));
+            } else {
+                // General N3
+                pool = VOCAB_DATA.filter(v => v.level === 'N3');
+            }
+
+            // Ensure enough cards (repeat if not enough for demo)
+            if (pool.length < 7) pool = [...pool, ...pool].slice(0, 7);
+            else pool = shuffle(pool).slice(0, 7);
+
+            // Create Card Pairs
+            const jpOnLeft = Math.random() > 0.5;
+            const cardsA = [];
+            const cardsB = [];
+
+            pool.forEach(v => {
+                // Left Card
+                cardsA.push({
+                    id: v.id + '-A',
+                    text: jpOnLeft ? v.kanji : v.meaning,
+                    type: jpOnLeft ? 'jp' : 'cn',
+                    matchId: v.id,
+                    status: 'default',
+                    originalKana: v.kana
+                });
+                // Right Card
+                cardsB.push({
+                    id: v.id + '-B',
+                    text: jpOnLeft ? v.meaning : v.kanji,
+                    type: jpOnLeft ? 'cn' : 'jp',
+                    matchId: v.id,
+                    status: 'default',
+                    originalKana: v.kana
+                });
             });
-        });
-      }
+
+            currentState.cards = [...cardsA, ...cardsB]; // Store all for lookup
+            currentState.leftCards = shuffle(cardsA);
+            currentState.rightCards = shuffle(cardsB);
+            currentState.matches = 0;
+            currentState.selectedId = null;
+
+            // UI Update
+            document.getElementById('selection-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('modal-overlay').classList.add('hidden');
+            
+            renderBoard();
+            updateScore();
+        }
+
+        function showSelection() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('selection-screen').classList.remove('hidden');
+        }
+
+        function createCardElement(card) {
+            const el = document.createElement('div');
+            el.className = `card ${card.status}`;
+            el.dataset.id = card.id;
+            
+            // Content
+            if (card.type === 'jp') {
+                el.innerHTML = `<span>${parseRuby(card.text)}</span> <span style="font-size:0.8rem; margin-left:4px">🔊</span>`;
+            } else {
+                el.innerText = card.text;
+            }
+
+            el.onclick = () => handleCardClick(card.id);
+            return el;
+        }
+
+        function renderBoard() {
+            const leftContainer = document.getElementById('col-left');
+            const rightContainer = document.getElementById('col-right');
+            leftContainer.innerHTML = '';
+            rightContainer.innerHTML = '';
+
+            currentState.leftCards.forEach(card => {
+                leftContainer.appendChild(createCardElement(card));
+            });
+            currentState.rightCards.forEach(card => {
+                rightContainer.appendChild(createCardElement(card));
+            });
+        }
+
+        function updateCardStatus(id, status) {
+            // Update State
+            const card = currentState.cards.find(c => c.id === id);
+            if (card) card.status = status;
+            
+            // Update UI
+            const el = document.querySelector(`.card[data-id="${id}"]`);
+            if (el) {
+                el.className = `card ${status}`;
+            }
+        }
+
+        function updateScore() {
+            document.getElementById('score-display').innerText = `${currentState.matches} / 7`;
+        }
+
+        function handleCardClick(id) {
+            const card = currentState.cards.find(c => c.id === id);
+            if (!card || card.status === 'matched') return;
+
+            // Audio
+            if (card.type === 'jp') {
+                speak(card.originalKana);
+            }
+
+            // Selection Logic
+            if (currentState.selectedId === id) {
+                // Deselect
+                currentState.selectedId = null;
+                updateCardStatus(id, 'default');
+                return;
+            }
+
+            if (!currentState.selectedId) {
+                // Select First
+                currentState.selectedId = id;
+                updateCardStatus(id, 'selected');
+            } else {
+                // Select Second
+                const prevId = currentState.selectedId;
+                const prevCard = currentState.cards.find(c => c.id === prevId);
+
+                // Prevent same side selection (simple check: if both are in left or both in right)
+                const isLeft = currentState.leftCards.some(c => c.id === id);
+                const isPrevLeft = currentState.leftCards.some(c => c.id === prevId);
+
+                if (isLeft === isPrevLeft) {
+                    // Switch selection
+                    updateCardStatus(prevId, 'default');
+                    currentState.selectedId = id;
+                    updateCardStatus(id, 'selected');
+                    return;
+                }
+
+                // Check Match
+                if (prevCard.matchId === card.matchId) {
+                    // Match!
+                    updateCardStatus(prevId, 'matched');
+                    updateCardStatus(id, 'matched');
+                    currentState.selectedId = null;
+                    currentState.matches++;
+                    updateScore();
+
+                    if (currentState.matches >= 7) {
+                        setTimeout(() => {
+                            document.getElementById('modal-overlay').classList.remove('hidden');
+                        }, 500);
+                    }
+                } else {
+                    // Error
+                    updateCardStatus(prevId, 'error');
+                    updateCardStatus(id, 'error');
+                    currentState.selectedId = null;
+
+                    setTimeout(() => {
+                        updateCardStatus(prevId, 'default');
+                        updateCardStatus(id, 'default');
+                    }, 800);
+                }
+            }
+        }
+
+        // --- AUDIO ---
+        function speak(text) {
+            if (!window.speechSynthesis) return;
+            // Cancel previous
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ja-JP';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
     </script>
-  </body>
+</body>
 </html>
