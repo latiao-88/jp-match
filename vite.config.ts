@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
-    // GitHub Pages base path - change this to your repository name if different
-    const base = process.env.GITHUB_PAGES_BASE || '/jp-match/';
+    // 强制硬编码 GitHub Pages 的仓库名路径，防止环境变量失效导致资源 404
+    const base = '/jp-match/';
     
     return {
       base: base,
