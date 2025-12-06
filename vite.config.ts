@@ -27,6 +27,12 @@ export default defineConfig(({ mode }) => {
           },
         },
       ],
+      define: {
+        // 终极修复：在浏览器环境中 polyfill process.env，防止第三方库崩溃
+        'process.env': {},
+        'process.env.NODE_ENV': JSON.stringify(mode),
+        'global': 'window',
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
