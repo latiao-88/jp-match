@@ -30,17 +30,18 @@ export const VocabGame: React.FC = () => {
 
     try {
       if (settings.verbForms.length > 0) {
-        // Mode 2: Verb Classification (Always use AI for specific forms)
+        // Mode 2: Verb Classification
         pool = await generateVerbPractice(settings.verbForms, settings.level, 7);
         
-        // CRITICAL: If verb forms are selected but API failed, don't use fallback
-        // because fallback data doesn't match the selected verb forms
+        // If no pool (e.g. no API key), notify user but try to fallback gracefully or show setup prompt
         if (!pool || pool.length === 0) {
-          // Show error message to user
-          setError('动词变形练习需要 Gemini API key。\n\n请选择"General Level"模式（不选择动词变形）来使用内置词汇。');
-          setLoading(false);
-          setIsPlaying(false);
-          return;
+           const hasKey = localStorage.getItem('GEMINI_API_KEY');
+           if (!hasKey) {
+             setError('要使用动词变形生成功能，需要设置 Gemini API Key。\n\n请点击右上角的设置图标 ⚙️ 输入 Key。\n\n如果没有 Key，请返回使用 "General Level" 模式。');
+             setLoading(false);
+             setIsPlaying(false);
+             return;
+           }
         }
       } else {
         // Mode 1: General Level
@@ -59,9 +60,9 @@ export const VocabGame: React.FC = () => {
       console.error("Fetch failed", e);
     }
 
-    // Fallback if AI fails or returns empty (ONLY for General Level mode)
+    // Fallback if AI fails or returns empty
     if (!pool || pool.length < 7) {
-      // Only use fallback if NOT in verb form mode
+      // For General Level, always safe to fallback
       if (settings.verbForms.length === 0) {
         if (settings.level === JLPTLevel.N3) {
            pool = shuffleArray(N3_VOCAB_LIST).slice(0, 7);
@@ -69,10 +70,10 @@ export const VocabGame: React.FC = () => {
            pool = shuffleArray(MOCK_N5_N4_MIX).slice(0, 7);
         }
       } else {
-        // Verb form mode but no results - already handled above
-        setLoading(false);
-        setIsPlaying(false);
-        return;
+        // For Verb Forms, if we reached here, it means API failed even with Key, or some other error
+        // We can fallback to basic verbs but warn they might not be conjugated
+        console.warn("Verb generation failed, falling back to basic list");
+        pool = shuffleArray(N3_VOCAB_LIST.filter(v => v.id.startsWith('n3_v'))).slice(0, 7);
       }
     }
 
